@@ -1,0 +1,49 @@
+# Docker
+*.pid
+*.log
+.dockerignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific
+.env
+.env.local
+.env.*.local
+
+# Build artifacts
+*/target/
+*/build/
+*/dist/
+*/node_modules/
+*.jar
+*.war
+*.ear
+
+# Go
+*/vendor/
+*.exe
+*.exe~
+*.test
+*.out
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+
+# Java
+*.log
+*.ctxt
+.mvn/

@@ -1,0 +1,184 @@
+services:
+  # ===== ИНФРАСТРУКТУРА =====
+  
+ postgres:
+  image: postgres:15-alpine
+  container_name: microshop-postgres
+  environment:
+    POSTGRES_DB: microshop
+    POSTGRES_USER: shopuser
+    POSTGRES_PASSWORD: shoppass
+  volumes:
+    - postgres_data:/var/lib/postgresql/data
+  ports:
+    - "5432:5432"
+  healthcheck:
+    test: ["CMD-SHELL", "pg_isready -U shopuser -d microshop"]
+    interval: 10s
+    timeout: 5s
+    retries: 5
+  networks:
+    - microshop-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: microshop-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - microshop-network
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: microshop-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - microshop-network
+
+  etcd:
+    image: gcr.io/etcd-development/etcd:v3.5.10
+    container_name: microshop-etcd
+    environment:
+      ETCD_LISTEN_CLIENT_URLS: http://0.0.0.0:2379
+      ETCD_ADVERTISE_CLIENT_URLS: http://etcd:2379
+      ETCD_DATA_DIR: /etcd-data
+    command:
+      - /usr/local/bin/etcd
+      - --listen-client-urls=http://0.0.0.0:2379
+      - --advertise-client-urls=http://etcd:2379
+      - --data-dir=/etcd-data
+    ports:
+      - "2379:2379"
+    volumes:
+      - etcd_data:/etcd-data
+    networks:
+      - microshop-network
+
+  minio:
+    image: minio/minio:latest
+    container_name: microshop-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - microshop-network
+
+  # ===== ПРИКЛАДНЫЕ СЕРВИСЫ =====
+  
+  auth-service:
+    build: ./auth-service-go
+    container_name: microshop-auth
+    environment:
+      ETCD_ENDPOINTS: etcd:2379
+      REDIS_ADDR: redis:6379
+    ports:
+      - "8081:8081"
+    depends_on:
+      etcd:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    networks:
+      - microshop-network
+
+  backend-service:
+    build: ./backend-java
+    container_name: microshop-backend
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/microshop
+      SPRING_DATASOURCE_USERNAME: shopuser
+      SPRING_DATASOURCE_PASSWORD: shoppass
+      SPRING_REDIS_HOST: redis
+      SPRING_RABBITMQ_HOST: rabbitmq
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+      minio:
+        condition: service_healthy
+    networks:
+      - microshop-network
+
+  order-worker:
+    build: ./order-worker-python
+    container_name: microshop-worker
+    environment:
+      DATABASE_URL: postgresql://shopuser:shoppass@postgres:5432/microshop
+      RABBITMQ_HOST: rabbitmq
+      REDIS_HOST: redis
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+    networks:
+      - microshop-network
+
+  frontend:
+    build: ./frontend-react
+    container_name: microshop-frontend
+    ports:
+      - "3001:80"
+    depends_on:
+      - backend-service
+    networks:
+      - microshop-network
+
+  nginx-gateway:
+    build: ./infra/nginx-gateway
+    container_name: microshop-gateway
+    ports:
+      - "3000:80"
+    depends_on:
+      - auth-service
+      - backend-service
+      - frontend
+      - minio
+    networks:
+      - microshop-network
+
+# ===== СЕТИ =====
+networks:
+  microshop-network:
+    driver: bridge
+
+# ===== ТОМА ДЛЯ ДАННЫХ =====
+volumes:
+  postgres_data:
+  redis_data:
+  rabbitmq_data:
+  etcd_data:
+  minio_data:

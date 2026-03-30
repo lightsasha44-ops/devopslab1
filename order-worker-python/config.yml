@@ -1,0 +1,14 @@
+rabbitmq:
+  host: rabbitmq
+  port: 5672
+  username: guest
+  password: guest
+  queue: orders.queue
+postgres:
+  host: postgres
+  port: 5432
+  db: shop
+  user: shop
+  password: shop
+worker:
+  prefetch_count: 10

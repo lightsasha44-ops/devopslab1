@@ -1,0 +1,10 @@
+server:
+  port: 8081
+etcd:
+  endpoints:
+    - <etcd_endpont>:2379
+redis:
+  addr: <redis_endpoint>:6379
+  db: 0
+session:
+  ttl_seconds: 86400

@@ -46,4 +46,4 @@ __pycache__/
 # Java
 *.log
 *.ctxt
-.mvn/
+.mvn/*.tar 

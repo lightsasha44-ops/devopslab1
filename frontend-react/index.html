@@ -1,12 +1,155 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Shop Frontend</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Microshop</title>
+    <style>
+        body { font-family: Arial; margin: 20px; background: #f5f5f5; }
+        .products { display: flex; gap: 20px; flex-wrap: wrap; }
+        .product { border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: white; width: 220px; text-align: center; }
+        .product img { width: 100%; height: 150px; object-fit: cover; border-radius: 5px; background: #eee; }
+        .price { color: green; font-size: 20px; font-weight: bold; margin: 10px 0; }
+        button { background: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .admin-panel { margin-top: 30px; border-top: 2px solid #ddd; padding-top: 20px; }
+        input, textarea { display: block; margin: 10px 0; padding: 8px; width: 300px; }
+        .auth-status { background: #e9ecef; padding: 10px; border-radius: 5px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <h1>🛍️ Microshop</h1>
+    
+    <div id="auth-status" class="auth-status"></div>
+    
+    <h2>Товары</h2>
+    <div id="products" class="products"></div>
+    
+    <div id="admin-panel" class="admin-panel" style="display:none;">
+        <h2>Админ-панель</h2>
+        <input type="text" id="product-name" placeholder="Название товара">
+        <input type="number" id="product-price" placeholder="Цена">
+        <input type="file" id="product-image" accept="image/*">
+        <button onclick="addProduct()">➕ Добавить товар</button>
+    </div>
+
+    <script>
+        let sessionToken = localStorage.getItem('sessionToken');
+        
+        async function loadProducts() {
+            try {
+                const res = await fetch('/api/products');
+                const products = await res.json();
+                const container = document.getElementById('products');
+                if (products.length === 0) {
+                    container.innerHTML = '<p>Нет товаров. Добавьте первый товар через админ-панель.</p>';
+                    return;
+                }
+                container.innerHTML = products.map(p => `
+                    <div class="product">
+                        <img src="${p.image}" alt="${p.name}" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22150%22%3E%3Crect width=%22200%22 height=%22150%22 fill=%22%23ddd%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23999%22%3EНет изображения%3C/text%3E%3C/svg%3E'">
+                        <h3>${p.name}</h3>
+                        <div class="price">${p.price} ₽</div>
+                        <button onclick="addToCart(${p.id})">🛒 В корзину</button>
+                    </div>
+                `).join('');
+            } catch (e) {
+                console.error('Ошибка загрузки товаров:', e);
+                document.getElementById('products').innerHTML = '<p>Ошибка загрузки товаров</p>';
+            }
+        }
+        
+        function addToCart(id) {
+            alert('Товар ' + id + ' добавлен в корзину');
+        }
+        
+        async function addProduct() {
+            const name = document.getElementById('product-name').value;
+            const price = document.getElementById('product-price').value;
+            const file = document.getElementById('product-image').files[0];
+            
+            if (!name || !price) {
+                alert('Заполните название и цену');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('name', name);
+            formData.append('price', price);
+            if (file) formData.append('image', file);
+            
+            try {
+                const res = await fetch('/api/admin/products', {
+                    method: 'POST',
+                    headers: { 'X-Session-Token': sessionToken },
+                    body: formData
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('✅ Товар добавлен');
+                    document.getElementById('product-name').value = '';
+                    document.getElementById('product-price').value = '';
+                    document.getElementById('product-image').value = '';
+                    loadProducts();
+                } else {
+                    alert('Ошибка: ' + (data.error || 'Неизвестная ошибка'));
+                }
+            } catch (e) {
+                alert('Ошибка при добавлении товара');
+            }
+        }
+        
+        async function checkAuth() {
+            const token = localStorage.getItem('sessionToken');
+            if (token) {
+                sessionToken = token;
+                document.getElementById('auth-status').innerHTML = `
+                    ✅ Вы вошли как <strong>admin</strong> 
+                    <button onclick="logout()">🚪 Выйти</button>
+                `;
+                document.getElementById('admin-panel').style.display = 'block';
+            } else {
+                document.getElementById('auth-status').innerHTML = `
+                    🔐 Вход для администратора:<br>
+                    <input type="text" id="login-email" placeholder="Email" value="admin" style="width:200px;display:inline-block;margin-right:10px">
+                    <input type="password" id="login-password" placeholder="Пароль" value="123" style="width:150px;display:inline-block;margin-right:10px">
+                    <button onclick="login()">Войти</button>
+                `;
+                document.getElementById('admin-panel').style.display = 'none';
+            }
+        }
+        
+        async function login() {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            try {
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                const data = await res.json();
+                if (data.session_token) {
+                    localStorage.setItem('sessionToken', data.session_token);
+                    sessionToken = data.session_token;
+                    checkAuth();
+                    loadProducts();
+                    alert('Вход выполнен!');
+                } else {
+                    alert('Ошибка входа: ' + (data.error || 'Неверные данные'));
+                }
+            } catch (e) {
+                alert('Ошибка соединения');
+            }
+        }
+        
+        function logout() {
+            localStorage.removeItem('sessionToken');
+            sessionToken = null;
+            checkAuth();
+            loadProducts();
+        }
+        
+        loadProducts();
+        checkAuth();
+    </script>
+</body>
 </html>

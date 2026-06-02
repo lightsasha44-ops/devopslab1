@@ -28,21 +28,21 @@ public class BackendApplication {
         product1.put("id", 1);
         product1.put("name", "Товар 1");
         product1.put("price", 100);
-        product1.put("image", "/media/product1.jpg");
+        product1.put("image", "/media/images/product1.jpg");
         products.add(product1);
         
         Map<String, Object> product2 = new HashMap<>();
         product2.put("id", 2);
         product2.put("name", "Товар 2");
         product2.put("price", 200);
-        product2.put("image", "/media/product2.jpg");
+        product2.put("image", "/media/images/product2.jpg");
         products.add(product2);
         
         Map<String, Object> product3 = new HashMap<>();
         product3.put("id", 3);
         product3.put("name", "Товар 3");
         product3.put("price", 300);
-        product3.put("image", "/media/product3.jpg");
+        product3.put("image", "/media/images/product3.jpg");
         products.add(product3);
     }
 
@@ -103,7 +103,7 @@ public class BackendApplication {
             newProduct.put("id", newId);
             newProduct.put("name", name);
             newProduct.put("price", price);
-            newProduct.put("image", "/media/" + fileName);
+            newProduct.put("image", "/media/images/" + fileName);
             
             products.add(newProduct);
             

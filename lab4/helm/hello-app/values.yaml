@@ -1,0 +1,45 @@
+# Application settings
+app:
+  name: hello-app
+  replicas: 2
+  image:
+    repository: qmayone/hello-k8s
+    tag: v2
+    pullPolicy: Never   # use local image loaded into minikube
+  port: 5000
+  config:
+    name: "Kubernetes"
+    bgColor: "#0f172a"
+
+# Service settings
+service:
+  type: ClusterIP
+  port: 80
+
+# PostgreSQL via CloudNativePG operator
+postgres:
+  clusterName: postgres-cluster
+  instances: 1
+  imageName: ghcr.io/cloudnative-pg/postgresql:16.2
+  storage:
+    size: 1Gi
+  database: appdb
+  owner: appuser
+  secretName: postgres-app-secret
+
+# Gateway API settings
+gateway:
+  name: hello-gateway
+  className: nginx
+  host: hello-app.local
+  tlsSecretName: hello-app-tls-secret
+
+# CertManager settings
+certManager:
+  issuerName: selfsigned-issuer
+  certificateName: hello-app-tls
+  duration: 8760h    # 1 year
+  renewBefore: 360h  # 15 days
+
+# Namespace
+namespace: default

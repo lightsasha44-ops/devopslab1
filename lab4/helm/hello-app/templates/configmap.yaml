@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.app.name }}-config
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: {{ .Values.app.name }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    release: {{ .Release.Name }}
+data:
+  NAME: {{ .Values.app.config.name | quote }}
+  BG_COLOR: {{ .Values.app.config.bgColor | quote }}
+  DB_HOST: {{ printf "%s-rw" .Values.postgres.clusterName | quote }}
+  DB_PORT: "5432"
+  DB_NAME: {{ .Values.postgres.database | quote }}
+  DB_USER: {{ .Values.postgres.owner | quote }}

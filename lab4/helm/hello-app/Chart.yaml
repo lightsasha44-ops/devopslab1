@@ -1,0 +1,15 @@
+apiVersion: v2
+name: hello-app
+description: A Helm chart for Hello K8s app with PostgreSQL, Gateway API and TLS
+type: application
+version: 1.0.0
+appVersion: "v2"
+
+keywords:
+  - flask
+  - postgresql
+  - gateway-api
+  - cert-manager
+
+maintainers:
+  - name: qmayone
